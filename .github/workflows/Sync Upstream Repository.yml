@@ -1,0 +1,57 @@
+name: Sync Upstream Repository
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # 每周一早上8点UTC时间执行
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Add upstream remote
+        run: |
+          # 🔄 TODO: 替换为实际的upstream仓库地址
+          git remote add upstream https://github.com/UPSTREAM_OWNER/UPSTREAM_REPO.git || true
+
+      - name: Sync upstream
+        run: |
+          git fetch upstream
+          MAIN_BRANCH="main"  # 🔄 TODO: 如果需要，修改分支名
+          
+          UPSTREAM_COMMITS=$(git rev-list HEAD..upstream/$MAIN_BRANCH --count 2>/dev/null || echo "0")
+          
+          if [ "$UPSTREAM_COMMITS" -gt 0 ]; then
+            echo "Syncing $UPSTREAM_COMMITS new commits..."
+            
+            if git merge upstream/$MAIN_BRANCH --no-edit; then
+              echo "✅ Merge successful"
+            else
+              echo "⚠️ Resolving conflicts..."
+              
+              # 保留本地的依赖文件
+              git checkout --ours package.json package-lock.json || true
+              git checkout --ours requirements.txt || true
+              git checkout --ours pom.xml || true
+              git checkout --ours composer.json || true
+              git checkout --ours go.mod go.sum || true
+              git checkout --ours Cargo.toml || true
+              
+              git add .
+              git commit -m "Resolve conflicts - keep local dependencies"
+            fi
+            
+            git push origin $MAIN_BRANCH
+          else
+            echo "📌 Already up to date"
+          fi
