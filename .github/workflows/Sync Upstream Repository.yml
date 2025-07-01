@@ -22,7 +22,7 @@ jobs:
       - name: Add upstream remote
         run: |
           # 🔄 TODO: 替换为实际的upstream仓库地址
-          git remote add upstream https://github.com/UPSTREAM_OWNER/UPSTREAM_REPO.git || true
+          git remote add upstream https://github.com/u14app/deep-research.git || true
 
       - name: Sync upstream
         run: |
