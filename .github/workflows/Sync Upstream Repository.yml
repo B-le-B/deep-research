@@ -29,11 +29,11 @@ jobs:
       - name: Add upstream remote
         run: |
           if ! git remote | grep -q upstream; then
-            git remote add upstream https://github.com/u14app/deep-research.git
+            git remote add upstream https://github.com/原作者/原项目名.git
             echo "✅ Added upstream remote"
           else
             echo "ℹ️ Upstream remote already exists"
-            git remote set-url upstream https://github.com/u14app/deep-research.git
+            git remote set-url upstream https://github.com/原作者/原项目名.git
           fi
           echo "Current remotes:"
           git remote -v
@@ -111,15 +111,26 @@ jobs:
           fi
           
           echo "🔀 Attempting to merge upstream/main..."
-          if git merge upstream/main --no-edit --strategy=ort --strategy-option=ours; then
+          if git merge upstream/main --no-edit --strategy=ort --strategy-option=ours --allow-unrelated-histories; then
             echo "✅ Merge completed successfully"
             echo "merge_status=success" >> $GITHUB_OUTPUT
           else
             echo "⚠️ Merge conflicts detected"
             echo "merge_status=conflict" >> $GITHUB_OUTPUT
-            git merge --abort
-            git merge upstream/main --no-edit --strategy=recursive -X ours
-            echo "✅ Resolved conflicts using ours strategy"
+            # 检查是否真的有merge在进行
+            if git rev-parse --verify MERGE_HEAD >/dev/null 2>&1; then
+              git merge --abort
+            fi
+            # 尝试第二种策略
+            if git merge upstream/main --no-edit --strategy=recursive -X ours --allow-unrelated-histories; then
+              echo "✅ Resolved conflicts using ours strategy"
+            else
+              echo "❌ Both merge strategies failed"
+              if git rev-parse --verify MERGE_HEAD >/dev/null 2>&1; then
+                git merge --abort
+              fi
+              exit 1
+            fi
           fi
           
           # 恢复本地工作流文件（防止权限问题）
